@@ -15,7 +15,10 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { usePortfolioStore } from '@/store/portfolioStore';
 import { Strategy } from '@/types';
-import { Search, Filter, TrendingUp, TrendingDown } from 'lucide-react';
+import { Search, Filter, TrendingUp, TrendingDown, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
+
+type SortField = 'symbol' | 'period' | 'profitFactor' | 'maxDrawdown' | 'sqn' | 'winRate' | 'totalReturn';
+type SortDirection = 'asc' | 'desc';
 
 export function StrategyTable() {
   const {
@@ -29,11 +32,60 @@ export function StrategyTable() {
   } = usePortfolioStore();
 
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortField, setSortField] = useState<SortField>('profitFactor');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
   
-  const strategies = getFilteredStrategies().filter(strategy =>
-    strategy.dataId.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    strategy.dataId.period.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const strategies = getFilteredStrategies()
+    .filter(strategy =>
+      strategy.dataId.symbol.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      strategy.dataId.period.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+    .sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
+      
+      switch (sortField) {
+        case 'symbol':
+          aValue = a.dataId.symbol;
+          bValue = b.dataId.symbol;
+          break;
+        case 'period':
+          aValue = a.dataId.period;
+          bValue = b.dataId.period;
+          break;
+        case 'profitFactor':
+          aValue = a.backtestStats.profitFactor;
+          bValue = b.backtestStats.profitFactor;
+          break;
+        case 'maxDrawdown':
+          aValue = Math.abs(a.backtestStats.maxDrawdown);
+          bValue = Math.abs(b.backtestStats.maxDrawdown);
+          break;
+        case 'sqn':
+          aValue = a.backtestStats.sqn;
+          bValue = b.backtestStats.sqn;
+          break;
+        case 'winRate':
+          aValue = a.backtestStats.winRate;
+          bValue = b.backtestStats.winRate;
+          break;
+        case 'totalReturn':
+          aValue = a.backtestStats.totalReturn;
+          bValue = b.backtestStats.totalReturn;
+          break;
+        default:
+          aValue = a.backtestStats.profitFactor;
+          bValue = b.backtestStats.profitFactor;
+      }
+      
+      if (typeof aValue === 'string') {
+        return sortDirection === 'asc' 
+          ? aValue.localeCompare(bValue)
+          : bValue.localeCompare(aValue);
+      }
+      
+      return sortDirection === 'asc' ? aValue - bValue : bValue - aValue;
+    });
 
   const uniqueSymbols = [...new Set(allStrategies.map(s => s.dataId.symbol))].sort();
   const uniquePeriods = [...new Set(allStrategies.map(s => s.dataId.period))].sort();
@@ -56,6 +108,36 @@ export function StrategyTable() {
       addToSelection(strategy.id!);
     }
   };
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortDirection('desc'); // Default to descending for numeric fields
+    }
+  };
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="w-3 h-3 text-muted-foreground" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="w-3 h-3 text-primary" />
+      : <ArrowDown className="w-3 h-3 text-primary" />;
+  };
+
+  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
+    <TableHead 
+      className="cursor-pointer hover:bg-muted/30 transition-colors select-none"
+      onClick={() => handleSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {getSortIcon(field)}
+      </div>
+    </TableHead>
+  );
 
   return (
     <Card className="bg-gradient-background shadow-card">
@@ -129,13 +211,23 @@ export function StrategyTable() {
             <TableHeader>
               <TableRow className="bg-muted/50">
                 <TableHead className="w-12">Select</TableHead>
-                <TableHead>Symbol</TableHead>
-                <TableHead>Timeframe</TableHead>
-                <TableHead className="text-right">Profit Factor</TableHead>
-                <TableHead className="text-right">Max DD (%)</TableHead>
-                <TableHead className="text-right">SQN</TableHead>
-                <TableHead className="text-right">Win Rate (%)</TableHead>
-                <TableHead className="text-right">Total Return (%)</TableHead>
+                <SortableHeader field="symbol">Symbol</SortableHeader>
+                <SortableHeader field="period">Timeframe</SortableHeader>
+                <SortableHeader field="profitFactor">
+                  <div className="text-right w-full">Profit Factor</div>
+                </SortableHeader>
+                <SortableHeader field="maxDrawdown">
+                  <div className="text-right w-full">Max DD (%)</div>
+                </SortableHeader>
+                <SortableHeader field="sqn">
+                  <div className="text-right w-full">SQN</div>
+                </SortableHeader>
+                <SortableHeader field="winRate">
+                  <div className="text-right w-full">Win Rate (%)</div>
+                </SortableHeader>
+                <SortableHeader field="totalReturn">
+                  <div className="text-right w-full">Total Return (%)</div>
+                </SortableHeader>
               </TableRow>
             </TableHeader>
             <TableBody>
