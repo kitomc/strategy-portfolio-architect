@@ -32,32 +32,53 @@ export function PortfolioChart() {
   const [showIndividual, setShowIndividual] = useState(false);
   const [visibleStrategies, setVisibleStrategies] = useState<Set<string>>(new Set());
 
-  const chartData = useMemo(() => {
-    if (selectedStrategies.length === 0) return [];
+  const { chartData, yAxisDomain } = useMemo(() => {
+    if (selectedStrategies.length === 0) return { chartData: [], yAxisDomain: [0, 100000] };
 
     const portfolioEquity = mergeEquityCurves(selectedStrategies);
     const maxLength = Math.max(...selectedStrategies.map(s => s.equity.length));
     
     const data: ChartDataPoint[] = [];
+    let minValue = Infinity;
+    let maxValue = -Infinity;
     
     for (let i = 0; i < maxLength; i++) {
+      const portfolioValue = portfolioEquity[i] || portfolioEquity[portfolioEquity.length - 1] || 100000;
       const dataPoint: ChartDataPoint = {
         index: i,
-        portfolio: portfolioEquity[i] || portfolioEquity[portfolioEquity.length - 1] || 100000,
+        portfolio: portfolioValue,
       };
+      
+      // Track min/max for Y axis domain
+      minValue = Math.min(minValue, portfolioValue);
+      maxValue = Math.max(maxValue, portfolioValue);
       
       // Add individual strategy data if enabled
       if (showIndividual) {
         selectedStrategies.forEach(strategy => {
           const key = `${strategy.dataId.symbol}_${strategy.dataId.period}`;
-          dataPoint[key] = strategy.equity[i] || strategy.equity[strategy.equity.length - 1] || 100000;
+          const strategyValue = strategy.equity[i] || strategy.equity[strategy.equity.length - 1] || 100000;
+          dataPoint[key] = strategyValue;
+          
+          // Include individual strategies in min/max calculation
+          minValue = Math.min(minValue, strategyValue);
+          maxValue = Math.max(maxValue, strategyValue);
         });
       }
       
       data.push(dataPoint);
     }
     
-    return data;
+    // Calculate Y axis domain with padding (5% above and below)
+    const range = maxValue - minValue;
+    const padding = Math.max(range * 0.05, 1000); // At least $1000 padding
+    const yMin = Math.max(0, minValue - padding);
+    const yMax = maxValue + padding;
+    
+    return { 
+      chartData: data,
+      yAxisDomain: [yMin, yMax]
+    };
   }, [selectedStrategies, showIndividual]);
 
   const toggleStrategyVisibility = (strategyKey: string) => {
@@ -173,10 +194,12 @@ export function PortfolioChart() {
                 tickLine={false}
               />
               <YAxis 
+                domain={yAxisDomain}
                 tickFormatter={formatCurrency}
                 tick={{ fontSize: 12 }}
                 axisLine={false}
                 tickLine={false}
+                scale="linear"
               />
               <Tooltip 
                 formatter={(value: number, name: string) => [
