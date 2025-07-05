@@ -83,28 +83,28 @@ export function StrategyTable() {
             </div>
           </div>
           
-          <Select value={filters.symbol || ''} onValueChange={(value) => 
-            setFilters({ ...filters, symbol: value || undefined })
+          <Select value={filters.symbol || 'all'} onValueChange={(value) => 
+            setFilters({ ...filters, symbol: value === 'all' ? undefined : value })
           }>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Symbol" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Symbols</SelectItem>
+              <SelectItem value="all">All Symbols</SelectItem>
               {uniqueSymbols.map(symbol => (
                 <SelectItem key={symbol} value={symbol}>{symbol}</SelectItem>
               ))}
             </SelectContent>
           </Select>
 
-          <Select value={filters.period || ''} onValueChange={(value) => 
-            setFilters({ ...filters, period: value || undefined })
+          <Select value={filters.period || 'all'} onValueChange={(value) => 
+            setFilters({ ...filters, period: value === 'all' ? undefined : value })
           }>
             <SelectTrigger className="w-32">
               <SelectValue placeholder="Timeframe" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">All Periods</SelectItem>
+              <SelectItem value="all">All Periods</SelectItem>
               {uniquePeriods.map(period => (
                 <SelectItem key={period} value={period}>{period}</SelectItem>
               ))}
